@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.1.0
+/* GF1 device class - Version 0.2.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -42,6 +42,14 @@ public:
     static const int ERROR_NOT_FOUND = CP2130::ERROR_NOT_FOUND;  // Returned by open() if the device was not found
     static const int ERROR_BUSY = CP2130::ERROR_BUSY;            // Returned by open() if the device is already in use
 
+    // Limits applicable to setAmplitude()
+    static constexpr float AMPLITUDE_MIN = 0;  // Minimum amplitude
+    static constexpr float AMPLITUDE_MAX = 5;  // Maximum amplitude
+
+    // Limits applicable to setFrequency()
+    static constexpr float FREQUENCY_MIN = 0;      // Minimum frequency
+    static constexpr float FREQUENCY_MAX = 25000;  // Maximum frequency
+
     GF1Device();
 
     bool disconnected() const;
@@ -57,6 +65,8 @@ public:
     CP2130::USBConfig getUSBConfig(int &errcnt, std::string &errstr);
     int open(const std::string &serial = std::string());
     void reset(int &errcnt, std::string &errstr);
+    void setAmplitude(float amplitude, int &errcnt, std::string &errstr);
+    void setFrequency(float frequency, int &errcnt, std::string &errstr);
     void setupChannel0(int &errcnt, std::string &errstr);
     void setupChannel1(int &errcnt, std::string &errstr);
 

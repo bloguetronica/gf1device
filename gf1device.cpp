@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.1.0
+/* GF1 device class - Version 0.2.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -26,7 +26,16 @@
 #include "gf1device.h"
 
 // Definitions
-const uint8_t EPOUT = 0x01;  // Address of endpoint assuming the OUT direction
+const uint8_t EPOUT = 0x01;      // Address of endpoint assuming the OUT direction
+const uint8_t FSTARTLSB = 0xc0;  // Mask for the Fstart LSB register
+const uint8_t FSTARTMSB = 0xd0;  // Mask for the Fstart MSB register
+
+// Amplitude conversion constants
+const uint AQUANTUM = 255;  // Quantum related to the 8-bit resolution of the AD5160 SPI potentiometer
+
+// Frequency conversion constants
+const uint FQUANTUM = 16777216;  // Quantum related to the 24-bit frequency resolution of the AD5932 waveform generator
+const float MCLK = 50000;        // 50MHz clock
 
 GF1Device::GF1Device() :
     cp2130_()
@@ -99,6 +108,54 @@ void GF1Device::reset(int &errcnt, std::string &errstr)
     cp2130_.reset(errcnt, errstr);
 }
 
+// Sets the amplitude of the generated signal to the given value (in Vpp)
+void GF1Device::setAmplitude(float amplitude, int &errcnt, std::string &errstr)
+{
+    if (amplitude < AMPLITUDE_MIN || amplitude > AMPLITUDE_MAX) {
+        ++errcnt;
+        errstr += "In setAmplitude(): Amplitude must be between 0 and 5.\n";  // Program logic error
+    } else {
+        cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+        uint8_t amplitudeCode = static_cast<uint8_t>(amplitude * AQUANTUM / AMPLITUDE_MAX + 0.5);
+        std::vector<uint8_t> set = {
+            amplitudeCode  // Amplitude
+        };
+        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the output voltage by updating the above registers
+        usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+        cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
+    }
+}
+
+// Sets the frequency of the generated signal to the given value (in KHz)
+void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
+{
+    if (frequency < FREQUENCY_MIN || frequency > FREQUENCY_MAX) {
+        ++errcnt;
+        errstr += "In setFrequency(): Frequency must be between 0 and 25000.\n";  // Program logic error
+    } else {
+        cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
+        cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+        cp2130_.setGPIO3(true, errcnt, errstr);  // Then set GPIO.3 to a logical high
+        cp2130_.setGPIO3(false, errcnt, errstr);  // and again to a logical low (this toggle is not really necessary, unless the frequency increments are set to be externally triggered via GPIO.2/CTRL)
+        cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+        uint32_t frequencyCode = static_cast<uint32_t>(frequency * FQUANTUM / MCLK + 0.5);
+        std::vector<uint8_t> set = {
+            0x10, 0x00,                                                      // Zero frequency increments
+            0x20, 0x00, 0x30, 0x00,                                          // Delta frequency set to zero
+            0x40, 0x00,                                                      // Increment interval set to zero
+            static_cast<uint8_t>(FSTARTLSB | (0x0f & frequencyCode >> 8)),   // Start frequency (Fstart LSB register)
+            static_cast<uint8_t>(frequencyCode),
+            static_cast<uint8_t>(FSTARTMSB | (0x0f & frequencyCode >> 20)),  // Start frequency (Fstart MSB register)
+            static_cast<uint8_t>(frequencyCode >> 12)
+        };
+        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the output voltage by updating the above registers
+        usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+        cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
+        cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
+        cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
+    }
+}
+
 // Sets up channel 0 for communication with the AD5932 waveform generator
 void GF1Device::setupChannel0(int &errcnt, std::string &errstr)
 {
@@ -111,7 +168,7 @@ void GF1Device::setupChannel0(int &errcnt, std::string &errstr)
     cp2130_.disableSPIDelays(0, errcnt, errstr);  // Disable all SPI delays for channel 0
 }
 
-// Sets up channel 1 for communication with the AD5160BRJZ5 SPI potentiometer
+// Sets up channel 1 for communication with the AD5160 SPI potentiometer
 void GF1Device::setupChannel1(int &errcnt, std::string &errstr)
 {
     CP2130::SPIMode mode;
