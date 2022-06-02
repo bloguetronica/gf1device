@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.2.1
+/* GF1 device class - Version 0.3.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -70,6 +70,8 @@ public:
     void setupChannel0(int &errcnt, std::string &errstr);
     void setupChannel1(int &errcnt, std::string &errstr);
 
+    static float expectedAmplitude(float amplitude);
+    static float expectedFrequency(float frequency);
     static std::string hardwareRevision(const CP2130::USBConfig &config);
     static std::list<std::string> listDevices(int &errcnt, std::string &errstr);
 };

@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.2.1
+/* GF1 device class - Version 0.3.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -20,6 +20,7 @@
 
 
 // Includes
+#include <cmath>
 #include <sstream>
 #include <unistd.h>
 #include <vector>
@@ -178,6 +179,18 @@ void GF1Device::setupChannel1(int &errcnt, std::string &errstr)
     mode.cpha = CP2130::CPHA0;  // SPI data is valid on each rising edge (CPHA = 0)
     cp2130_.configureSPIMode(1, mode, errcnt, errstr);  // Configure SPI mode for channel 1, using the above settings
     cp2130_.disableSPIDelays(1, errcnt, errstr);  // Disable all SPI delays for channel 1
+}
+
+// Helper function that returns the expected amplitude from a given amplitude value
+float GF1Device::expectedAmplitude(float amplitude)
+{
+    return std::round(amplitude * AQUANTUM / AMPLITUDE_MAX) * AMPLITUDE_MAX / AQUANTUM;
+}
+
+// Helper function that returns the expected frequency from a given frequency value
+float GF1Device::expectedFrequency(float frequency)
+{
+    return std::round(frequency * FQUANTUM / MCLK) * MCLK / FQUANTUM;
 }
 
 // Helper function that returns the hardware revision from a given USB configuration
