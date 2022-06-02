@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.2.0
+/* GF1 device class - Version 0.2.1
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -27,8 +27,8 @@
 
 // Definitions
 const uint8_t EPOUT = 0x01;      // Address of endpoint assuming the OUT direction
-const uint8_t FSTARTLSB = 0xc0;  // Mask for the Fstart LSB register
-const uint8_t FSTARTMSB = 0xd0;  // Mask for the Fstart MSB register
+const uint8_t FSTARTLSB = 0xc0;  // Mask for the Fstart LSBs register
+const uint8_t FSTARTMSB = 0xd0;  // Mask for the Fstart MSBs register
 
 // Amplitude conversion constants
 const uint AQUANTUM = 255;  // Quantum related to the 8-bit resolution of the AD5160 SPI potentiometer
@@ -115,14 +115,14 @@ void GF1Device::setAmplitude(float amplitude, int &errcnt, std::string &errstr)
         ++errcnt;
         errstr += "In setAmplitude(): Amplitude must be between 0 and 5.\n";  // Program logic error
     } else {
-        cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+        cp2130_.selectCS(1, errcnt, errstr);  // Enable the chip select corresponding to channel 1, and disable any others
         uint8_t amplitudeCode = static_cast<uint8_t>(amplitude * AQUANTUM / AMPLITUDE_MAX + 0.5);
         std::vector<uint8_t> set = {
             amplitudeCode  // Amplitude
         };
         cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the output voltage by updating the above registers
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
-        cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
+        cp2130_.disableCS(1, errcnt, errstr);  // Disable the previously enabled chip select
     }
 }
 
@@ -143,9 +143,9 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
             0x10, 0x00,                                                      // Zero frequency increments
             0x20, 0x00, 0x30, 0x00,                                          // Delta frequency set to zero
             0x40, 0x00,                                                      // Increment interval set to zero
-            static_cast<uint8_t>(FSTARTLSB | (0x0f & frequencyCode >> 8)),   // Start frequency (Fstart LSB register)
+            static_cast<uint8_t>(FSTARTLSB | (0x0f & frequencyCode >> 8)),   // Start frequency (Fstart LSBs register)
             static_cast<uint8_t>(frequencyCode),
-            static_cast<uint8_t>(FSTARTMSB | (0x0f & frequencyCode >> 20)),  // Start frequency (Fstart MSB register)
+            static_cast<uint8_t>(FSTARTMSB | (0x0f & frequencyCode >> 20)),  // Start frequency (Fstart MSBs register)
             static_cast<uint8_t>(frequencyCode >> 12)
         };
         cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the output voltage by updating the above registers
