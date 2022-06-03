@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.4.0
+/* GF1 device class - Version 0.4.1
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -214,12 +214,14 @@ void GF1Device::setupChannel1(int &errcnt, std::string &errstr)
 }
 
 // Helper function that returns the expected amplitude from a given amplitude value
+// Note that the function is only valid for values between "AMPLITUDE_MIN" [0] and "AMPLITUDE_MAX" [5]
 float GF1Device::expectedAmplitude(float amplitude)
 {
     return std::round(amplitude * AQUANTUM / AMPLITUDE_MAX) * AMPLITUDE_MAX / AQUANTUM;
 }
 
 // Helper function that returns the expected frequency from a given frequency value
+// Note that the function is only valid for values between "FREQUENCY_MIN" [0] and "FREQUENCY_MAX" [25000]
 float GF1Device::expectedFrequency(float frequency)
 {
     return std::round(frequency * FQUANTUM / MCLK) * MCLK / FQUANTUM;
