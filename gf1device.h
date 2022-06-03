@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.3.0
+/* GF1 device class - Version 0.4.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -67,6 +67,8 @@ public:
     void reset(int &errcnt, std::string &errstr);
     void setAmplitude(float amplitude, int &errcnt, std::string &errstr);
     void setFrequency(float frequency, int &errcnt, std::string &errstr);
+    void setSineWave(int &errcnt, std::string &errstr);
+    void setTriangleWave(int &errcnt, std::string &errstr);
     void setupChannel0(int &errcnt, std::string &errstr);
     void setupChannel1(int &errcnt, std::string &errstr);
 

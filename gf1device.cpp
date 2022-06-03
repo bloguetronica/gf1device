@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.3.0
+/* GF1 device class - Version 0.4.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -121,7 +121,7 @@ void GF1Device::setAmplitude(float amplitude, int &errcnt, std::string &errstr)
         std::vector<uint8_t> set = {
             amplitudeCode  // Amplitude
         };
-        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the output voltage by updating the above registers
+        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the amplitude of the output signal
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
         cp2130_.disableCS(1, errcnt, errstr);  // Disable the previously enabled chip select
     }
@@ -149,12 +149,44 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
             static_cast<uint8_t>(FSTARTMSB | (0x0f & frequencyCode >> 20)),  // Start frequency (Fstart MSBs register)
             static_cast<uint8_t>(frequencyCode >> 12)
         };
-        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the output voltage by updating the above registers
+        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the frequency of the output signal by updating the above registers
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
         cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
         cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
         cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
     }
+}
+
+// Sets the waveform of the generated signal to sinusoidal
+void GF1Device::setSineWave(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+    std::vector<uint8_t> set = {
+        0x0f, 0xdf  // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
+    };
+    cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal
+    usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+    cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
+    cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
+    cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
+}
+
+// Sets the waveform of the generated signal to triangular
+void GF1Device::setTriangleWave(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+    std::vector<uint8_t> set = {
+        0x0d, 0xdf  // Triangular waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
+    };
+    cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the waveform to triangular
+    usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+    cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
+    cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
+    cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
 }
 
 // Sets up channel 0 for communication with the AD5932 waveform generator
