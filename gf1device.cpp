@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.4.1
+/* GF1 device class - Version 0.4.2
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -118,10 +118,10 @@ void GF1Device::setAmplitude(float amplitude, int &errcnt, std::string &errstr)
     } else {
         cp2130_.selectCS(1, errcnt, errstr);  // Enable the chip select corresponding to channel 1, and disable any others
         uint8_t amplitudeCode = static_cast<uint8_t>(amplitude * AQUANTUM / AMPLITUDE_MAX + 0.5);
-        std::vector<uint8_t> set = {
+        std::vector<uint8_t> setAmplitude = {
             amplitudeCode  // Amplitude
         };
-        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the amplitude of the output signal
+        cp2130_.spiWrite(setAmplitude, EPOUT, errcnt, errstr);  // Set the amplitude of the output signal
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
         cp2130_.disableCS(1, errcnt, errstr);  // Disable the previously enabled chip select
     }
@@ -140,7 +140,7 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
         cp2130_.setGPIO3(false, errcnt, errstr);  // and again to a logical low (this toggle is not really necessary, unless the frequency increments are set to be externally triggered via GPIO.2/CTRL)
         cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
         uint32_t frequencyCode = static_cast<uint32_t>(frequency * FQUANTUM / MCLK + 0.5);
-        std::vector<uint8_t> set = {
+        std::vector<uint8_t> setFrequency = {
             0x10, 0x00,                                                      // Zero frequency increments
             0x20, 0x00, 0x30, 0x00,                                          // Delta frequency set to zero
             0x40, 0x00,                                                      // Increment interval set to zero
@@ -149,7 +149,7 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
             static_cast<uint8_t>(FSTARTMSB | (0x0f & frequencyCode >> 20)),  // Start frequency (Fstart MSBs register)
             static_cast<uint8_t>(frequencyCode >> 12)
         };
-        cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the frequency of the output signal by updating the above registers
+        cp2130_.spiWrite(setFrequency, EPOUT, errcnt, errstr);  // Set the frequency of the output signal by updating the above registers
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
         cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
         cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
@@ -163,10 +163,10 @@ void GF1Device::setSineWave(int &errcnt, std::string &errstr)
     cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
     cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
-    std::vector<uint8_t> set = {
+    std::vector<uint8_t> setSineWave = {
         0x0f, 0xdf  // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
     };
-    cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal
+    cp2130_.spiWrite(setSineWave, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
     cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
     cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
@@ -179,10 +179,10 @@ void GF1Device::setTriangleWave(int &errcnt, std::string &errstr)
     cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
     cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
-    std::vector<uint8_t> set = {
+    std::vector<uint8_t> setTriangleWave = {
         0x0d, 0xdf  // Triangular waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
     };
-    cp2130_.spiWrite(set, EPOUT, errcnt, errstr);  // Set the waveform to triangular
+    cp2130_.spiWrite(setTriangleWave, EPOUT, errcnt, errstr);  // Set the waveform to triangular
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
     cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
     cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high

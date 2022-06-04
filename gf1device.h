@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.4.1
+/* GF1 device class - Version 0.4.2
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -55,7 +55,6 @@ public:
     bool disconnected() const;
     bool isOpen() const;
 
-    void attach(int &errcnt, std::string &errstr);
     void close();
     CP2130::SiliconVersion getCP2130SiliconVersion(int &errcnt, std::string &errstr);
     std::string getHardwareRevision(int &errcnt, std::string &errstr);
