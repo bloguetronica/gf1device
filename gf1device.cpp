@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.4.2
+/* GF1 device class - Version 0.5.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -53,6 +53,30 @@ bool GF1Device::disconnected() const
 bool GF1Device::isOpen() const
 {
     return cp2130_.isOpen();
+}
+
+// Sets the frequency and amplitude of the generated signal to zero, and sets its waveform to sinusoidal
+void GF1Device::clear(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+    std::vector<uint8_t> clearFrequency = {
+        0x0f, 0xdf,              // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
+        0x10, 0x00,              // Zero frequency increments
+        0x20, 0x00, 0x30, 0x00,  // Delta frequency set to zero
+        0x40, 0x00,              // Increment interval set to zero
+        0xc0, 0x00, 0xc0, 0x00   // Start frequency set to zero
+    };
+    cp2130_.spiWrite(clearFrequency, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal and the frequency to zero
+    usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+    cp2130_.selectCS(1, errcnt, errstr);  // Enable the chip select corresponding to channel 1, and again disable the rest (including the one corresponding to the previously enabled channel)
+    std::vector<uint8_t> clearAmplitude = {
+        0x00  // Amplitude set to zero
+    };
+    cp2130_.spiWrite(clearAmplitude, EPOUT, errcnt, errstr);  // Set the amplitude to zero
+    usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+    cp2130_.disableCS(1, errcnt, errstr);  // Disable the chip select corresponding to channel 1, which is the only one that is active to this point
 }
 
 // Closes the device safely, if open
