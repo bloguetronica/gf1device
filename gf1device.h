@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.5.0
+/* GF1 device class - Version 0.6.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -71,6 +71,8 @@ public:
     void setTriangleWave(int &errcnt, std::string &errstr);
     void setupChannel0(int &errcnt, std::string &errstr);
     void setupChannel1(int &errcnt, std::string &errstr);
+    void start(int &errcnt, std::string &errstr);
+    void stop(int &errcnt, std::string &errstr);
 
     static float expectedAmplitude(float amplitude);
     static float expectedFrequency(float frequency);

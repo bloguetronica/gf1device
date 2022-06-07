@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.5.0
+/* GF1 device class - Version 0.6.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -235,6 +235,24 @@ void GF1Device::setupChannel1(int &errcnt, std::string &errstr)
     mode.cpha = CP2130::CPHA0;  // SPI data is valid on each rising edge (CPHA = 0)
     cp2130_.configureSPIMode(1, mode, errcnt, errstr);  // Configure SPI mode for channel 1, using the above settings
     cp2130_.disableSPIDelays(1, errcnt, errstr);  // Disable all SPI delays for channel 1
+}
+
+// Starts the signal generation
+void GF1Device::start(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2 
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    cp2130_.setGPIO2(true, errcnt, errstr);  // Then set GPIO.2 to a logical high
+    cp2130_.setGPIO2(false, errcnt, errstr);  // and again to a logical low
+}
+
+// Stops the signal generation
+void GF1Device::stop(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2 
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    cp2130_.setGPIO3(true, errcnt, errstr);  // Then set GPIO.3 to a logical high
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and again to a logical low
 }
 
 // Helper function that returns the expected amplitude from a given amplitude value
