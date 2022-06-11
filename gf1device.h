@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.6.0
+/* GF1 device class - Version 0.6.1
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -32,6 +32,10 @@ class GF1Device
 {
 private:
     CP2130 cp2130_;
+
+    void clearCtrlInterrupt(int &errcnt, std::string &errstr);
+    void toggleCtrl(int &errcnt, std::string &errstr);
+    void toggleInterrupt(int &errcnt, std::string &errstr);
 
 public:
     // Class definitions

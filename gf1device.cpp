@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.6.0
+/* GF1 device class - Version 0.6.1
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -38,6 +38,27 @@ const uint AQUANTUM = 255;  // Quantum related to the 8-bit resolution of the AD
 const uint FQUANTUM = 16777216;  // Quantum related to the 24-bit frequency resolution of the AD5932 waveform generator
 const float MCLK = 50000;        // 50MHz clock
 
+// Private convenience function that is used to clear the signals going to the CTRL and INTERRUPT pins on the AD5932 waveform generator
+void GF1Device::clearCtrlInterrupt(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(false, errcnt, errstr);  // Set GPIO.2 low (corresponds to the CTRL pin)
+    cp2130_.setGPIO3(false, errcnt, errstr);  // Set GPIO.3 low (corresponds to the INTERRUPT pin)
+}
+
+// Private convenience function used to toggle the signal going to the CTRL pin on the AD5932 waveform generator
+void GF1Device::toggleCtrl(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
+    cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
+}
+
+// Private convenience function used to toggle the signal going to the INTERRUPT pin on the AD5932 waveform generator
+void GF1Device::toggleInterrupt(int &errcnt, std::string &errstr)
+{
+    cp2130_.setGPIO3(true, errcnt, errstr);  // Set GPIO.3 to a logical high
+    cp2130_.setGPIO3(false, errcnt, errstr);  // and then to a logical low
+}
+    
 GF1Device::GF1Device() :
     cp2130_()
 {
@@ -58,8 +79,7 @@ bool GF1Device::isOpen() const
 // Sets the frequency and amplitude of the generated signal to zero, and sets its waveform to sinusoidal
 void GF1Device::clear(int &errcnt, std::string &errstr)
 {
-    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
-    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
     std::vector<uint8_t> clearFrequency = {
         0x0f, 0xdf,              // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
@@ -68,13 +88,13 @@ void GF1Device::clear(int &errcnt, std::string &errstr)
         0x40, 0x00,              // Increment interval set to zero
         0xc0, 0x00, 0xc0, 0x00   // Start frequency set to zero
     };
-    cp2130_.spiWrite(clearFrequency, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal and the frequency to zero
+    cp2130_.spiWrite(clearFrequency, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal and the frequency to zero (AD5932 on channel 0)
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
     cp2130_.selectCS(1, errcnt, errstr);  // Enable the chip select corresponding to channel 1, and again disable the rest (including the one corresponding to the previously enabled channel)
     std::vector<uint8_t> clearAmplitude = {
         0x00  // Amplitude set to zero
     };
-    cp2130_.spiWrite(clearAmplitude, EPOUT, errcnt, errstr);  // Set the amplitude to zero
+    cp2130_.spiWrite(clearAmplitude, EPOUT, errcnt, errstr);  // Set the amplitude to zero (AD5160 on channel 1)
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
     cp2130_.disableCS(1, errcnt, errstr);  // Disable the chip select corresponding to channel 1, which is the only one that is active to this point
 }
@@ -145,7 +165,7 @@ void GF1Device::setAmplitude(float amplitude, int &errcnt, std::string &errstr)
         std::vector<uint8_t> setAmplitude = {
             amplitudeCode  // Amplitude
         };
-        cp2130_.spiWrite(setAmplitude, EPOUT, errcnt, errstr);  // Set the amplitude of the output signal
+        cp2130_.spiWrite(setAmplitude, EPOUT, errcnt, errstr);  // Set the amplitude of the output signal (AD5160 on channel 1)
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
         cp2130_.disableCS(1, errcnt, errstr);  // Disable the previously enabled chip select
     }
@@ -158,10 +178,8 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
         ++errcnt;
         errstr += "In setFrequency(): Frequency must be between 0 and 25000.\n";  // Program logic error
     } else {
-        cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
-        cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
-        cp2130_.setGPIO3(true, errcnt, errstr);  // Then set GPIO.3 to a logical high
-        cp2130_.setGPIO3(false, errcnt, errstr);  // and again to a logical low (this toggle is not really necessary, unless the frequency increments are set to be externally triggered via GPIO.2/CTRL)
+        clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
+        toggleInterrupt(errcnt, errstr);  // Toggle "INTERRUPT" signal (this toggle is not really necessary, unless the frequency increments are set to be externally triggered via GPIO.2/CTRL)
         cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
         uint32_t frequencyCode = static_cast<uint32_t>(frequency * FQUANTUM / MCLK + 0.5);
         std::vector<uint8_t> setFrequency = {
@@ -173,44 +191,39 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
             static_cast<uint8_t>(FSTARTMSB | (0x0f & frequencyCode >> 20)),  // Start frequency (Fstart MSBs register)
             static_cast<uint8_t>(frequencyCode >> 12)
         };
-        cp2130_.spiWrite(setFrequency, EPOUT, errcnt, errstr);  // Set the frequency of the output signal by updating the above registers
+        cp2130_.spiWrite(setFrequency, EPOUT, errcnt, errstr);  // Set the frequency of the output signal by updating the above registers (AD5932 on channel 0)
         usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
         cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
-        cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
-        cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
+        toggleCtrl(errcnt, errstr);  // Toggle "CTRL" signal
     }
 }
 
 // Sets the waveform of the generated signal to sinusoidal
 void GF1Device::setSineWave(int &errcnt, std::string &errstr)
 {
-    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
-    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
     std::vector<uint8_t> setSineWave = {
         0x0f, 0xdf  // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
     };
-    cp2130_.spiWrite(setSineWave, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal
+    cp2130_.spiWrite(setSineWave, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal (AD5932 on channel 0)
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
     cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
-    cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
-    cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
+    toggleCtrl(errcnt, errstr);  // Toggle "CTRL" signal
 }
 
 // Sets the waveform of the generated signal to triangular
 void GF1Device::setTriangleWave(int &errcnt, std::string &errstr)
 {
-    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2
-    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
+    clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
     std::vector<uint8_t> setTriangleWave = {
         0x0d, 0xdf  // Triangular waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
     };
-    cp2130_.spiWrite(setTriangleWave, EPOUT, errcnt, errstr);  // Set the waveform to triangular
+    cp2130_.spiWrite(setTriangleWave, EPOUT, errcnt, errstr);  // Set the waveform to triangular (AD5932 on channel 0)
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
     cp2130_.disableCS(0, errcnt, errstr);  // Disable the previously enabled chip select
-    cp2130_.setGPIO2(true, errcnt, errstr);  // Set GPIO.2 to a logical high
-    cp2130_.setGPIO2(false, errcnt, errstr);  // and then to a logical low
+    toggleCtrl(errcnt, errstr);  // Toggle "CTRL" signal
 }
 
 // Sets up channel 0 for communication with the AD5932 waveform generator
@@ -240,19 +253,15 @@ void GF1Device::setupChannel1(int &errcnt, std::string &errstr)
 // Starts the signal generation
 void GF1Device::start(int &errcnt, std::string &errstr)
 {
-    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2 
-    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
-    cp2130_.setGPIO2(true, errcnt, errstr);  // Then set GPIO.2 to a logical high
-    cp2130_.setGPIO2(false, errcnt, errstr);  // and again to a logical low
+    clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
+    toggleCtrl(errcnt, errstr);  // Toggle "CTRL" signal
 }
 
 // Stops the signal generation
 void GF1Device::stop(int &errcnt, std::string &errstr)
 {
-    cp2130_.setGPIO2(false, errcnt, errstr);  // Make sure that both GPIO.2 
-    cp2130_.setGPIO3(false, errcnt, errstr);  // and GPIO.3 are set to to a logical low first
-    cp2130_.setGPIO3(true, errcnt, errstr);  // Then set GPIO.3 to a logical high
-    cp2130_.setGPIO3(false, errcnt, errstr);  // and again to a logical low
+    clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
+    toggleInterrupt(errcnt, errstr);  // Toggle "INTERRUPT" signal
 }
 
 // Helper function that returns the expected amplitude from a given amplitude value
