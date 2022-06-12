@@ -1,4 +1,4 @@
-/* GF1 device class - Version 0.6.1
+/* GF1 device class - Version 1.0.0
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
