@@ -82,11 +82,11 @@ void GF1Device::clear(int &errcnt, std::string &errstr)
     clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
     std::vector<uint8_t> clearFrequency = {
-        0x0f, 0xdf,              // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
-        0x10, 0x00,              // Zero frequency increments
-        0x20, 0x00, 0x30, 0x00,  // Delta frequency set to zero
-        0x40, 0x00,              // Increment interval set to zero
-        0xc0, 0x00, 0xc0, 0x00   // Start frequency set to zero
+        0x0f, 0xdf,                       // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
+        0x10, 0x00,                       // Zero frequency increments
+        0x20, 0x00, 0x30, 0x00,           // Delta frequency set to zero
+        0x40, 0x00,                       // Increment interval set to zero
+        FSTARTLSB, 0x00, FSTARTMSB, 0x00  // Start frequency set to zero
     };
     cp2130_.spiWrite(clearFrequency, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal and the frequency to zero (AD5932 on channel 0)
     usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
