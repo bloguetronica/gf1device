@@ -1,4 +1,4 @@
-/* GF1 device class - Version 1.0.0
+/* GF1 device class - Version 1.0.1
    Requires CP2130 class version 1.1.0 or later
    Copyright (c) 2022 Samuel Lourenço
 
@@ -81,6 +81,7 @@ void GF1Device::clear(int &errcnt, std::string &errstr)
 {
     clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+    usleep(100);  // Wait 100us, in order to prevent possible errors after enabling the chip select (workaround implemented in version 1.0.1)
     std::vector<uint8_t> clearFrequency = {
         0x0f, 0xdf,                       // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
         0x10, 0x00,                       // Zero frequency increments
@@ -89,8 +90,9 @@ void GF1Device::clear(int &errcnt, std::string &errstr)
         FSTARTLSB, 0x00, FSTARTMSB, 0x00  // Start frequency set to zero
     };
     cp2130_.spiWrite(clearFrequency, EPOUT, errcnt, errstr);  // Set the waveform to sinusoidal and the frequency to zero (AD5932 on channel 0)
-    usleep(100);  // Wait 100us, in order to prevent possible errors while disabling the chip select (workaround)
+    usleep(100);  // Wait 100us, in order to prevent possible errors while switching the chip select (workaround)
     cp2130_.selectCS(1, errcnt, errstr);  // Enable the chip select corresponding to channel 1, and again disable the rest (including the one corresponding to the previously enabled channel)
+    usleep(100);  // Wait 100us, in order to prevent possible errors after switching the chip select (workaround implemented in version 1.0.1)
     std::vector<uint8_t> clearAmplitude = {
         0x00  // Amplitude set to zero
     };
@@ -161,6 +163,7 @@ void GF1Device::setAmplitude(float amplitude, int &errcnt, std::string &errstr)
         errstr += "In setAmplitude(): Amplitude must be between 0 and 5.\n";  // Program logic error
     } else {
         cp2130_.selectCS(1, errcnt, errstr);  // Enable the chip select corresponding to channel 1, and disable any others
+        usleep(100);  // Wait 100us, in order to prevent possible errors after enabling the chip select (workaround implemented in version 1.0.1)
         uint8_t amplitudeCode = static_cast<uint8_t>(amplitude * AQUANTUM / AMPLITUDE_MAX + 0.5);
         std::vector<uint8_t> setAmplitude = {
             amplitudeCode  // Amplitude
@@ -181,6 +184,7 @@ void GF1Device::setFrequency(float frequency, int &errcnt, std::string &errstr)
         clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
         toggleInterrupt(errcnt, errstr);  // Toggle "INTERRUPT" signal (this toggle is not really necessary, unless the frequency increments are set to be externally triggered via GPIO.2/CTRL)
         cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+        usleep(100);  // Wait 100us, in order to prevent possible errors after enabling the chip select (workaround implemented in version 1.0.1)
         uint32_t frequencyCode = static_cast<uint32_t>(frequency * FQUANTUM / MCLK + 0.5);
         std::vector<uint8_t> setFrequency = {
             0x10, 0x00,                                                      // Zero frequency increments
@@ -203,6 +207,7 @@ void GF1Device::setSineWave(int &errcnt, std::string &errstr)
 {
     clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+    usleep(100);  // Wait 100us, in order to prevent possible errors after enabling the chip select (workaround implemented in version 1.0.1)
     std::vector<uint8_t> setSineWave = {
         0x0f, 0xdf  // Sinusoidal waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
     };
@@ -217,6 +222,7 @@ void GF1Device::setTriangleWave(int &errcnt, std::string &errstr)
 {
     clearCtrlInterrupt(errcnt, errstr);  // Clear "CTRL" and "INTERRUPT" signals
     cp2130_.selectCS(0, errcnt, errstr);  // Enable the chip select corresponding to channel 0, and disable any others
+    usleep(100);  // Wait 100us, in order to prevent possible errors after enabling the chip select (workaround implemented in version 1.0.1)
     std::vector<uint8_t> setTriangleWave = {
         0x0d, 0xdf  // Triangular waveform, automatic increments, MSBOUT pin enabled, SYNCOUT pin enabled, B24 = 1, SYNCSEL = 1
     };
