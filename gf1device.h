@@ -1,6 +1,6 @@
-/* GF1 device class - Version 1.0.1
+/* GF1 device class - Version 1.0.2
    Requires CP2130 class version 1.1.0 or later
-   Copyright (c) 2022 Samuel Lourenço
+   Copyright (c) 2022-2026 Samuel Lourenço
 
    This library is free software: you can redistribute it and/or modify it
    under the terms of the GNU Lesser General Public License as published by
@@ -54,7 +54,7 @@ public:
     static constexpr float FREQUENCY_MIN = 0;      // Minimum frequency
     static constexpr float FREQUENCY_MAX = 25000;  // Maximum frequency
 
-    GF1Device();
+    explicit GF1Device();  // Explicit since version 1.0.2
 
     bool disconnected() const;
     bool isOpen() const;
